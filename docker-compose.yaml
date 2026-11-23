@@ -1,0 +1,44 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: booking-db
+    environment:
+      POSTGRES_USER: booking
+      POSTGRES_PASSWORD: booking
+      POSTGRES_DB: booking
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      - "5423:5432"
+    volumes:
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U booking -d booking"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build: .
+    container_name: sbrm-api
+    environment:
+      SBRM_HTTP_HOST: 0.0.0.0
+      SBRM_HTTP_PORT: "8080"
+      SBRM_DB_HOST: db
+      SBRM_DB_PORT: "5432"
+      SBRM_DB_NAME: booking
+      SBRM_DB_USER: booking
+      SBRM_DB_PASSWORD: booking
+      SBRM_DB_SSL_MODE: disable
+      SBRM_JWT_SECRET: ${SBRM_JWT_SECRET:-dev-secret-ganti-di-production}
+      SBRM_JWT_TTL: 24h
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
